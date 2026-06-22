@@ -1,14 +1,9 @@
 from .context import get_system_prompt
-import openai
-import os
 import tools  # noqa: F401 — ensure tools are registered for execution
-from config import GROQ_API_KEY
 from tools.registry import TOOL_REGISTRY
 from .parser import parse_llm_output
-client = openai.OpenAI(
-    base_url="https://api.groq.com/openai/v1",
-    api_key=GROQ_API_KEY
-)
+from .llm import agent_llm
+from .memory import ShortTermManager
 
 def run_agent(query: str, max_steps: int = 10):
     """The core execution engine of the autonomous agent."""
@@ -28,15 +23,13 @@ def run_agent(query: str, max_steps: int = 10):
     print("✅ Context Assembled. State Initialized.")
     print("-" * 40)
 
-    
+    memory_manager = ShortTermManager(max_tail=6, chunk_size=4)
     for step in range(max_steps):
         print(f"\n🔄 STEP {step + 1} OF {max_steps}")
 
-        response = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
-            messages=messages,
-            stop=["Observation:"]
-        )
+        messages = memory_manager.prune_messages(messages)
+
+        response = agent_llm.complete(messages)
 
 
         llm_text = response.choices[0].message.content
@@ -62,7 +55,14 @@ def run_agent(query: str, max_steps: int = 10):
         print(f"🔄 Taking Action: {action}")
         print(f"🔄 Action Input: {action_input}")
 
-        result = TOOL_REGISTRY[action](**action_input)
+        try:
+            result = TOOL_REGISTRY[action](**action_input)
+        except Exception as e: 
+            print(f"Tool call error: {str(e)}")
+            messages.append({"role": "user", "content": f"Tool Call: ERROR - {str(e)}"})
+            continue
+
+
         print(f"Observation: {result}")
         messages.append({"role": "user", "content": f"Observation: {result}"})
         print(f"🔄 Result: {result}")
