@@ -1,27 +1,47 @@
-import os
+import streamlit as st
 from agent.engine import run_agent
 
-def main():
-    print("="*50)
-    print("🤖 BAREMETAL PROSPECTOR INITIALIZED")
-    print("Type 'exit' or 'quit' to shutdown.")
-    print("="*50)
+st.set_page_config(page_title="Sable Prospector", page_icon="🤖", layout="centered")
 
-    # ---> CREATE THE PERSISTENT STATE HERE <---
-    current_chat_history = None
+st.title("🤖 Sable Autonomous Prospector")
+st.markdown("Enter a target company. The agent will research them, apply Sable's corporate memory, and draft a hyper-personalized cold email.")
 
-    while True:
-        # 1. The Terminal Prompt
-        user_query = input("\n👤 You: ")
-        
-        # 2. Shutdown condition
-        if user_query.lower() in ['exit', 'quit']:
-            print("Shutting down the Prospector...")
-            break
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = None
+
+with st.form("prospect_form"):
+    target_company = st.text_input("Target Company / Query", placeholder="e.g., 'Research Gymshark' or 'Rewrite the email to be more aggressive'")
+    submit_button = st.form_submit_button("Launch Agent 🚀")
+
+if submit_button and target_company:
+    with st.spinner(f"Agent is analyzing {target_company}..."):
+        try:
+            result = run_agent(target_company, chat_history=st.session_state.chat_history)
             
-        # 3. Execute the agent and CAPTURE the updated history
-        print("\n⚙️  Processing...")
-        current_chat_history = run_agent(user_query, chat_history=current_chat_history)
-
-if __name__ == "__main__":
-    main()
+            st.session_state.chat_history = result["messages"]
+            metrics = result["metrics"]
+            
+            final_message = st.session_state.chat_history[-1]["content"]
+            final_answer = final_message.split("Final Answer:")[-1].strip() if "Final Answer:" in final_message else final_message
+            
+            st.success("Task Completed!")
+            
+            cols = st.columns(3)
+            cols[0].metric("Loop Iterations", metrics["iterations"])
+            cols[1].metric("Tokens Used", metrics["tokens"])
+            cols[2].metric("Groq LLM Time", f"{metrics['total_time']:.2f}s")
+            
+            # Display Output
+            st.markdown("### 📄 Final Output / Email Draft")
+            st.info(final_answer)
+            
+            # Expander for debugging thought process
+            with st.expander("🔍 View Raw Agent Logs"):
+                for msg in st.session_state.chat_history:
+                    if msg["role"] == "assistant":
+                        st.markdown(f"**Agent:**\n```\n{msg['content']}\n```")
+                    elif msg["role"] == "user":
+                        st.markdown(f"**System/Observation:**\n{msg['content']}")
+                        
+        except Exception as e:
+            st.error(f"Agent failed: {str(e)}")
