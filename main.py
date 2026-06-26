@@ -87,10 +87,11 @@ if user_input:
                     
                     # Display Metrics
                     if metrics:
-                        cols = st.columns(3)
+                        cols = st.columns(4)
                         cols[0].metric("Loop Iterations", metrics.get("iterations", 0))
-                        cols[1].metric("Tokens Used", metrics.get("tokens", 0))
-                        cols[2].metric("Groq LLM Time", f"{metrics.get('total_time', 0):.2f}s")
+                        cols[1].metric("Total Tokens", metrics.get("tokens", 0))
+                        cols[2].metric("Groq API Time", f"{metrics.get('total_time', 0):.2f}s")
+                        cols[3].metric("Total Wall Time", f"{metrics.get('wall_time', 0):.2f}s")
                     
                     # Extract Dossier
                     dossier = extract_dossier_content(result["messages"])

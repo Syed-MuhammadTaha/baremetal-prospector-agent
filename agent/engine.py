@@ -11,6 +11,10 @@ def run_agent(query: str, chat_history: list = None, max_steps: int = 10, ui_mod
     print(f"\n🚀 INITIALIZING AGENT FOR: {query}")
     start_time = time.time()
     
+    # --- METRICS ACCUMULATORS ---
+    cumulative_tokens = 0
+    cumulative_llm_time = 0.0
+    
     # 1. Assemble the rules and tools
     system_prompt = get_system_prompt()
 
@@ -57,14 +61,18 @@ def run_agent(query: str, chat_history: list = None, max_steps: int = 10, ui_mod
 
         action, action_input = parsed_output
 
-        # Grab exact metrics from Groq if available
-        tokens = response.usage.total_tokens if hasattr(response, 'usage') and response.usage else 0
-        total_llm_time = getattr(response.usage, "total_time", llm_end - llm_start) if hasattr(response, 'usage') and response.usage else (llm_end - llm_start)
+        # Accumulate exact metrics from Groq if available
+        if hasattr(response, 'usage') and response.usage:
+            cumulative_tokens += response.usage.total_tokens
+            cumulative_llm_time += getattr(response.usage, "total_time", llm_end - llm_start)
+        else:
+            cumulative_llm_time += (llm_end - llm_start)
 
         metrics = {
             "iterations": step + 1,
-            "tokens": tokens,
-            "total_time": total_llm_time
+            "tokens": cumulative_tokens,
+            "total_time": cumulative_llm_time,
+            "wall_time": time.time() - start_time
         }
 
         # --- 1. COMPLETION CONDITION ---
@@ -77,6 +85,7 @@ def run_agent(query: str, chat_history: list = None, max_steps: int = 10, ui_mod
             }
 
         # --- 2. STREAMLIT HITL INTERCEPTION ---
+        # If the UI is Streamlit, do NOT run the terminal tool. Return to UI instead.
         if action == "ask_human" and ui_mode == "streamlit":
             question = action_input.get("question", "I need your input to proceed.")
             print(f"⏸️ PAUSING FOR STREAMLIT HUMAN INPUT: {question}")
