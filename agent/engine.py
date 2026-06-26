@@ -13,6 +13,7 @@ def run_agent(query: str, chat_history: list = None, max_steps: int = 10):
     system_prompt = get_system_prompt()
 
     print("System prompt loaded.")
+    print(system_prompt)
     print("-" * 40)
     
     # 2. Initialize Working Memory (The State)
@@ -25,7 +26,6 @@ def run_agent(query: str, chat_history: list = None, max_steps: int = 10):
         # Subsequent turns: Load the history
         messages = chat_history
         # CRITICAL: Always refresh the system prompt! 
-        # If the human updated the Tier 3 JSON memory in the last turn, 
         # this ensures the agent reads the new patches.
         messages[0]["content"] = system_prompt
         

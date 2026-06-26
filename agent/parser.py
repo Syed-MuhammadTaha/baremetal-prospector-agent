@@ -29,7 +29,7 @@ def parse_llm_output(text: str):
     action_input_str = action_input_match.group(1).strip()
 
     # --- THE FIX: ISOLATE THE JSON BLOCK ---
-    # Ignore any conversational filler the LLM hallucinates after the JSON
+    # Find the first '{' and the last '}' to ignore trailing conversational filler
     start_idx = action_input_str.find('{')
     end_idx = action_input_str.rfind('}')
     
@@ -42,11 +42,13 @@ def parse_llm_output(text: str):
 
     # 4. Attempt to parse the JSON
     try:
-        action_input = json.loads(action_input_str)
-    except json.JSONDecodeError:
+        # json.loads() is strict. It will fail if there are unescaped newlines in the email body.
+        # Strict=False allows unescaped control characters (like newlines) inside strings.
+        action_input = json.loads(action_input_str, strict=False)
+    except json.JSONDecodeError as e:
         raise ParserError(
-            f"Your Action Input is not valid JSON. You provided: {action_input_str}. "
-            "Please rewrite it as a strict JSON object."
+            f"Your Action Input is not valid JSON. Error: {str(e)}. "
+            "If you are writing a multi-line email, you MUST escape newlines with \\n."
         )
 
     return action, action_input

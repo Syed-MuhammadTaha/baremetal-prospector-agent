@@ -10,8 +10,14 @@ def search(query: str) -> str:
         response = client.search(query)
         formatted_results = []
         for r in response['results'][:3]: # Limit to top 3 results for context space
-            formatted_results.append(f"Title: {r['title']}\nURL: {r['url']}\nSnippet: {r['content']}\n---")
+            
+            # --- COMPRESSION FIX ---
+            snippet = r.get('content', '')
+            if len(snippet) > 4000:
+                snippet = f"{snippet[:2500]}\n\n[... OMITTED MIDDLE CONTENTS FOR BREVITY ...]\n\n{snippet[-1500:]}"
+            # -----------------------
+            
+            formatted_results.append(f"Title: {r['title']}\nURL: {r['url']}\nSnippet: {snippet}\n---")
         return "\n".join(formatted_results) if formatted_results else "No results found."
     except Exception as e:
         raise Exception(f"Search error: {str(e)}")
-
