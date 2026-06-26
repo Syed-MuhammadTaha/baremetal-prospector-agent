@@ -25,7 +25,7 @@ def get_embedding(text: str) -> list[float]:
 
 def cosine_similarity(vec1: list[float], vec2: list[float]) -> float:
     """Calculates semantic similarity between two vectors (0.0 to 1.0)."""
-    dot_product = sum(a * b for a, b in zip[tuple[float, float]](vec1, vec2))
+    dot_product = sum(a * b for a, b in zip(vec1, vec2))
     magnitude1 = math.sqrt(sum(a * a for a in vec1))
     magnitude2 = math.sqrt(sum(b * b for b in vec2))
     if not magnitude1 or not magnitude2:
